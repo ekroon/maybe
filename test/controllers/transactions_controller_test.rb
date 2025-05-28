@@ -139,7 +139,7 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_no_duplicate_normalized_queries do
       assert_queries_match(/FROM \"categories\"/, count: 1) do
-        assert_queries_match(/FROM \"transactions\"/, count: 7) do
+        assert_queries_match(/FROM \"transactions\"/, count: 5) do
           get transactions_url(per_page: 50)
         end
       end
