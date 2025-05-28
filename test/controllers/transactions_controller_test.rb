@@ -2,6 +2,8 @@ require "test_helper"
 
 class TransactionsControllerTest < ActionDispatch::IntegrationTest
   include EntryableResourceInterfaceTest, EntriesTestHelper
+  include ActiveRecord::Assertions::QueryAssertions
+  include QueryTestHelper
 
   setup do
     sign_in @user = users(:family_admin)
@@ -123,5 +125,24 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     get transactions_url(page: 9999999, per_page: 10) # out of range loads last page
 
     assert_dom "#" + dom_id(sorted_transactions.last), count: 1
+  end
+
+  test "index avoids repeating queries" do
+    family = families(:empty)
+    sign_in users(:empty)
+    account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+    category = family.categories.create! name: "Meals", classification: "expense"
+
+    20.times do
+      create_transaction(account: account, category: category)
+    end
+
+    assert_no_duplicate_normalized_queries do
+      assert_queries_match(/FROM \"categories\"/, count: 1) do
+        assert_queries_match(/FROM \"transactions\"/, count: 5) do
+          get transactions_url(per_page: 50)
+        end
+      end
+    end
   end
 end
